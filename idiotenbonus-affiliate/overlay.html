@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Overlay</title>
+    
+    <!-- External Libraries via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Montserrat:ital,wght@0,900;1,900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        'brand-dark': '#05050a',
+                        'brand-card': '#0f0f16',
+                        'brand-purple': '#8b5cf6',
+                        'brand-purple-glow': '#a78bfa',
+                        'brand-text': '#ffffff',
+                        'brand-muted': '#9ca3af',
+                        'brand-gold': '#fbbf24',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body { background-color: transparent; color: white; overflow: hidden; }
+        .glass-panel { background: rgba(15, 15, 22, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .neon-text { text-shadow: 0 0 10px rgba(139, 92, 246, 0.5); }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Draggable Container -->
+    <div id="overlay-container" class="glass-panel rounded-2xl p-4 w-[350px] shadow-2xl border-l-4 border-brand-purple">
+        
+        <!-- Header -->
+        <div class="flex items-center gap-2 mb-4 border-b border-white/10 pb-2">
+            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            <h1 class="font-display italic font-black text-lg tracking-tighter text-white">
+                IDIOTEN<span class="text-brand-purple neon-text">BONUS</span>
+            </h1>
+        </div>
+
+        <!-- Grid -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <!-- Balance -->
+            <div class="bg-black/40 rounded-lg p-2 border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-brand-muted flex items-center gap-1">
+                    <i data-lucide="wallet" class="w-3 h-3"></i> Start
+                </div>
+                <div class="font-mono font-bold text-white text-lg truncate" id="val-balance">0,00 €</div>
+            </div>
+            
+            <!-- Result -->
+            <div class="bg-black/40 rounded-lg p-2 border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-brand-muted flex items-center gap-1">
+                    <i data-lucide="coins" class="w-3 h-3"></i> Profit
+                </div>
+                <div class="font-mono font-bold text-white text-lg truncate" id="val-profit">0,00 €</div>
+                <div class="text-[9px] text-brand-muted text-right" id="val-progress">0/0</div>
+            </div>
+
+            <!-- RTP -->
+            <div class="bg-black/40 rounded-lg p-2 border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-brand-muted flex items-center gap-1">
+                    <i data-lucide="percent" class="w-3 h-3"></i> RTP
+                </div>
+                <div class="font-mono font-bold text-white text-lg" id="val-rtp">0.00%</div>
+            </div>
+
+            <!-- Streak -->
+            <div class="bg-black/40 rounded-lg p-2 border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-brand-muted flex items-center gap-1">
+                    <i data-lucide="flame" class="w-3 h-3"></i> Streak
+                </div>
+                <div class="font-mono font-bold text-yellow-400 text-lg" id="val-streak">0</div>
+            </div>
+        </div>
+
+        <!-- Next Game -->
+        <div class="bg-brand-purple/10 rounded-xl p-3 border border-brand-purple/30 relative overflow-hidden group">
+            <div class="absolute inset-0 bg-brand-purple/5 animate-pulse"></div>
+            <div class="relative z-10 flex flex-col items-center text-center">
+                <div class="text-[10px] uppercase font-black tracking-widest text-brand-purple-glow mb-1">Next Game</div>
+                <div class="font-display font-black italic text-xl text-white leading-none line-clamp-1" id="val-next-game">
+                    ???
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const bc = new BroadcastChannel('hunt-channel');
+        
+        const els = {
+            balance: document.getElementById('val-balance'),
+            profit: document.getElementById('val-profit'),
+            progress: document.getElementById('val-progress'),
+            rtp: document.getElementById('val-rtp'),
+            streak: document.getElementById('val-streak'),
+            nextGame: document.getElementById('val-next-game')
+        };
+
+        const formatMoney = (val) => val.toLocaleString('de-DE', {style:'currency', currency:'EUR'});
+
+        bc.onmessage = (event) => {
+            const data = event.data;
+            if(!data) return;
+
+            els.balance.textContent = formatMoney(data.startBalance || 0);
+            
+            const profit = data.profit || 0;
+            els.profit.innerHTML = `<span class="${profit >= 0 ? 'text-green-400' : 'text-red-400'}">${profit >= 0 ? '+' : ''}${formatMoney(profit)}</span>`;
+            
+            els.progress.textContent = `${data.playedCount || 0} / ${data.totalSlots || 0}`;
+            
+            const rtp = data.rtp || 0;
+            els.rtp.className = `font-mono font-bold text-lg ${rtp >= 100 ? 'text-green-400' : 'text-brand-purple'}`;
+            els.rtp.textContent = rtp.toFixed(2) + '%';
+            
+            els.streak.textContent = data.streak || 0;
+            
+            els.nextGame.textContent = data.nextGame || '???';
+        };
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
